@@ -1,56 +1,128 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field
 from typing import List
-import uuid
-from datetime import datetime
-
+from models import ContactMessage, ContactMessageCreate, ContactMessageResponse
+from database import database
+from portfolio_data import PORTFOLIO_DATA
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
-
 # Create the main app without a prefix
-app = FastAPI()
+app = FastAPI(
+    title="Chindhamani's Portfolio API",
+    description="Backend API for portfolio website with contact form and data management",
+    version="1.0.0"
+)
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
-
-# Define Models
-class StatusCheck(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
-
-class StatusCheckCreate(BaseModel):
-    client_name: str
-
-# Add your routes to the router instead of directly to app
+# Portfolio Routes
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "Portfolio API is running", "status": "active"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.dict()
-    status_obj = StatusCheck(**status_dict)
-    _ = await db.status_checks.insert_one(status_obj.dict())
-    return status_obj
+@api_router.get("/portfolio")
+async def get_portfolio_data():
+    """Get complete portfolio data"""
+    return {
+        "success": True,
+        "data": PORTFOLIO_DATA
+    }
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    status_checks = await db.status_checks.find().to_list(1000)
-    return [StatusCheck(**status_check) for status_check in status_checks]
+@api_router.get("/portfolio/{section}")
+async def get_portfolio_section(section: str):
+    """Get specific portfolio section data"""
+    if section not in PORTFOLIO_DATA:
+        raise HTTPException(status_code=404, detail=f"Section '{section}' not found")
+    
+    return {
+        "success": True,
+        "section": section,
+        "data": PORTFOLIO_DATA[section]
+    }
+
+# Contact Form Routes
+@api_router.post("/contact", response_model=ContactMessageResponse)
+async def create_contact_message(message_data: ContactMessageCreate):
+    """Submit a new contact form message"""
+    try:
+        # Create contact message in database
+        contact_message = await database.create_contact_message(message_data)
+        
+        return ContactMessageResponse(
+            success=True,
+            message="Thank you for your message! I'll get back to you soon.",
+            contact_id=contact_message.id
+        )
+        
+    except Exception as e:
+        logging.error(f"Error creating contact message: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to send message. Please try again later."
+        )
+
+@api_router.get("/contact/messages", response_model=List[ContactMessage])
+async def get_contact_messages(limit: int = 50, skip: int = 0):
+    """Get all contact messages (admin endpoint)"""
+    try:
+        messages = await database.get_contact_messages(limit=limit, skip=skip)
+        return messages
+    except Exception as e:
+        logging.error(f"Error retrieving contact messages: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve messages"
+        )
+
+@api_router.get("/contact/messages/{message_id}", response_model=ContactMessage)
+async def get_contact_message(message_id: str):
+    """Get a specific contact message"""
+    try:
+        message = await database.get_contact_message_by_id(message_id)
+        if not message:
+            raise HTTPException(status_code=404, detail="Message not found")
+        return message
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error retrieving contact message: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve message"
+        )
+
+@api_router.patch("/contact/messages/{message_id}/status")
+async def update_message_status(message_id: str, status: str):
+    """Update message status (read/unread/replied)"""
+    try:
+        valid_statuses = ["unread", "read", "replied"]
+        if status not in valid_statuses:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid status. Must be one of: {valid_statuses}"
+            )
+        
+        success = await database.update_message_status(message_id, status)
+        if not success:
+            raise HTTPException(status_code=404, detail="Message not found")
+        
+        return {"success": True, "message": f"Status updated to {status}"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error updating message status: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update message status"
+        )
 
 # Include the router in the main app
 app.include_router(api_router)
