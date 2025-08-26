@@ -127,6 +127,15 @@ async def update_message_status(message_id: str, status: str):
 # Include the router in the main app
 app.include_router(api_router)
 
+# Database connection setup
+@app.on_event("startup")
+async def startup_db_client():
+    await database.connect()
+
+@app.on_event("shutdown")
+async def shutdown_db_client():
+    await database.disconnect()
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
