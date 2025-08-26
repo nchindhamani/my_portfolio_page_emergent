@@ -4,7 +4,7 @@
 PORTFOLIO_DATA = {
     "personal": {
         "name": "Chindhamani Nachiappan",
-        "title": "Full Stack Developer",
+        "title": "Backend Developer",
         "location": "Sunnyvale, CA",
         "email": "nchindhamani@gmail.com",
         "linkedin": "https://www.linkedin.com/in/chindhamani-nachiappan-59a979bb/",
