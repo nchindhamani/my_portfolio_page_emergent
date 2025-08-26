@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { portfolioData, mockContactSubmit } from '../mock';
+import axios from 'axios';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -20,10 +20,16 @@ import {
   Cloud,
   Terminal,
   CheckCircle,
-  Send
+  Send,
+  Loader2
 } from 'lucide-react';
 
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
+
 const Portfolio = () => {
+  const [portfolioData, setPortfolioData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -32,6 +38,30 @@ const Portfolio = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+
+  // Load portfolio data from backend
+  useEffect(() => {
+    const fetchPortfolioData = async () => {
+      try {
+        const response = await axios.get(`${API}/portfolio`);
+        if (response.data.success) {
+          setPortfolioData(response.data.data);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading portfolio data:', error);
+        // Fallback to show error or use static data
+        toast({
+          title: "Loading Error",
+          description: "Failed to load portfolio data. Please refresh the page.",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
+    };
+
+    fetchPortfolioData();
+  }, []);
 
   // Smooth scroll effect
   useEffect(() => {
@@ -52,7 +82,7 @@ const Portfolio = () => {
     return () => {
       sections.forEach((section) => observer.unobserve(section));
     };
-  }, []);
+  }, [portfolioData]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -67,18 +97,19 @@ const Portfolio = () => {
     setIsSubmitting(true);
     
     try {
-      const result = await mockContactSubmit(formData);
-      if (result.success) {
+      const response = await axios.post(`${API}/contact`, formData);
+      if (response.data.success) {
         toast({
           title: "Message sent!",
-          description: result.message,
+          description: response.data.message,
         });
         setFormData({ name: '', email: '', subject: '', message: '' });
       }
     } catch (error) {
+      console.error('Error sending message:', error);
       toast({
         title: "Error",
-        description: "Failed to send message. Please try again.",
+        description: error.response?.data?.detail || "Failed to send message. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -92,6 +123,32 @@ const Portfolio = () => {
       block: 'start'
     });
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading portfolio...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state - no data loaded
+  if (!portfolioData) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Failed to load portfolio data</p>
+          <Button onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
