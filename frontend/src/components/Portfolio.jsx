@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -8,6 +7,7 @@ import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { useToast } from '../hooks/use-toast';
 import { Toaster } from './ui/toaster';
+import { portfolioData } from '../data/portfolioData';
 import { 
   Mail, 
   MapPin, 
@@ -20,16 +20,10 @@ import {
   Cloud,
   Terminal,
   CheckCircle,
-  Send,
-  Loader2
+  Send
 } from 'lucide-react';
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
 const Portfolio = () => {
-  const [portfolioData, setPortfolioData] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -38,30 +32,6 @@ const Portfolio = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
-
-  // Load portfolio data from backend
-  useEffect(() => {
-    const fetchPortfolioData = async () => {
-      try {
-        const response = await axios.get(`${API}/portfolio`);
-        if (response.data.success) {
-          setPortfolioData(response.data.data);
-        }
-        setLoading(false);
-      } catch (error) {
-        console.error('Error loading portfolio data:', error);
-        // Fallback to show error or use static data
-        toast({
-          title: "Loading Error",
-          description: "Failed to load portfolio data. Please refresh the page.",
-          variant: "destructive",
-        });
-        setLoading(false);
-      }
-    };
-
-    fetchPortfolioData();
-  }, []);
 
   // Smooth scroll effect
   useEffect(() => {
@@ -82,7 +52,7 @@ const Portfolio = () => {
     return () => {
       sections.forEach((section) => observer.unobserve(section));
     };
-  }, [portfolioData]);
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -97,19 +67,30 @@ const Portfolio = () => {
     setIsSubmitting(true);
     
     try {
-      const response = await axios.post(`${API}/contact`, formData);
-      if (response.data.success) {
+      // Netlify Forms submission
+      const formElement = e.target;
+      const netlifyFormData = new FormData(formElement);
+      
+      const response = await fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(netlifyFormData).toString(),
+      });
+
+      if (response.ok) {
         toast({
-          title: "Message sent!",
-          description: response.data.message,
+          title: "Message sent successfully!",
+          description: "Thank you for your message! I'll get back to you soon.",
         });
         setFormData({ name: '', email: '', subject: '', message: '' });
+      } else {
+        throw new Error('Form submission failed');
       }
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
         title: "Error",
-        description: error.response?.data?.detail || "Failed to send message. Please try again.",
+        description: "Failed to send message. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -123,32 +104,6 @@ const Portfolio = () => {
       block: 'start'
     });
   };
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading portfolio...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state - no data loaded
-  if (!portfolioData) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">Failed to load portfolio data</p>
-          <Button onClick={() => window.location.reload()}>
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -474,7 +429,22 @@ const Portfolio = () => {
 
             <Card className="border-0 shadow-sm">
               <CardContent className="pt-6">
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form 
+                  name="portfolio-contact" 
+                  method="POST" 
+                  data-netlify="true" 
+                  data-netlify-honeypot="bot-field"
+                  onSubmit={handleSubmit} 
+                  className="space-y-6"
+                >
+                  {/* Netlify form fields */}
+                  <input type="hidden" name="form-name" value="portfolio-contact" />
+                  <div style={{ display: 'none' }}>
+                    <label>
+                      Don't fill this out if you're human: <input name="bot-field" />
+                    </label>
+                  </div>
+
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="name" className="text-sm font-normal">Name</Label>
