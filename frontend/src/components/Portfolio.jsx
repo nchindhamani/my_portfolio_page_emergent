@@ -67,16 +67,17 @@ const Portfolio = () => {
     setIsSubmitting(true);
     
     try {
-      // Netlify Forms submission
-      const formElement = e.target;
-      const netlifyFormData = new FormData(formElement);
+      // Netlify Forms submission - using the standard form submission approach
+      const form = e.target;
+      const data = new FormData(form);
       
+      // Use fetch with the correct content type for form data
       const response = await fetch('/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(netlifyFormData).toString(),
+        body: new URLSearchParams(data).toString()
       });
-
+      
       if (response.ok) {
         toast({
           title: "Message sent successfully!",
@@ -84,6 +85,7 @@ const Portfolio = () => {
         });
         setFormData({ name: '', email: '', subject: '', message: '' });
       } else {
+        console.error('Form submission error:', response.status);
         throw new Error('Form submission failed');
       }
     } catch (error) {
@@ -436,6 +438,7 @@ const Portfolio = () => {
                   data-netlify-honeypot="bot-field"
                   onSubmit={handleSubmit} 
                   className="space-y-6"
+                  netlify
                 >
                   {/* Netlify form fields */}
                   <input type="hidden" name="form-name" value="portfolio-contact" />
