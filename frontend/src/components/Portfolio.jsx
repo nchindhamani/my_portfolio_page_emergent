@@ -1,11 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import React, { useEffect } from 'react';
+import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
-import { Input } from './ui/input';
-import { Textarea } from './ui/textarea';
-import { Label } from './ui/label';
-import { useToast } from '../hooks/use-toast';
 import { Toaster } from './ui/toaster';
 import { portfolioData } from '../data/portfolioData';
 import { 
@@ -19,20 +14,10 @@ import {
   Database,
   Cloud,
   Terminal,
-  CheckCircle,
-  Send
+  CheckCircle
 } from 'lucide-react';
 
 const Portfolio = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    subject: '',
-    message: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
-
   // Smooth scroll effect
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -53,52 +38,6 @@ const Portfolio = () => {
       sections.forEach((section) => observer.unobserve(section));
     };
   }, []);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    try {
-      // Netlify Forms submission - using the standard form submission approach
-      const form = e.target;
-      const data = new FormData(form);
-      
-      // Use fetch with the correct content type for form data
-      const response = await fetch('/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(data).toString()
-      });
-      
-      if (response.ok) {
-        toast({
-          title: "Message sent successfully!",
-          description: "Thank you for your message! I'll get back to you soon.",
-        });
-        setFormData({ name: '', email: '', subject: '', message: '' });
-      } else {
-        console.error('Form submission error:', response.status);
-        throw new Error('Form submission failed');
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const scrollToSection = (sectionId) => {
     document.getElementById(sectionId)?.scrollIntoView({ 
@@ -431,89 +370,26 @@ const Portfolio = () => {
 
             <Card className="border-0 shadow-sm">
               <CardContent className="pt-6">
-                <form 
-                  name="portfolio-contact" 
-                  method="POST" 
-                  data-netlify="true" 
-                  data-netlify-honeypot="bot-field"
-                  onSubmit={handleSubmit} 
-                  className="space-y-6"
-                  netlify
-                >
-                  {/* Netlify form fields */}
-                  <input type="hidden" name="form-name" value="portfolio-contact" />
-                  <div style={{ display: 'none' }}>
-                    <label>
-                      Don't fill this out if you're human: <input name="bot-field" />
-                    </label>
+                <h4 className="text-xl font-light mb-6">Contact Information</h4>
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-gray-600 mb-4">
+                      Feel free to reach out directly via email or connect with me on LinkedIn. I'm looking forward to discussing potential opportunities.
+                    </p>
                   </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="name" className="text-sm font-normal">Name</Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        required
-                        className="mt-1"
-                      />
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-3">
+                      <MapPin className="w-5 h-5 text-gray-500" />
+                      <span className="text-gray-700">{portfolioData.personal.location}</span>
                     </div>
-                    <div>
-                      <Label htmlFor="email" className="text-sm font-normal">Email</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        type="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        required
-                        className="mt-1"
-                      />
+                    
+                    <div className="flex items-center space-x-3">
+                      <Calendar className="w-5 h-5 text-gray-500" />
+                      <span className="text-gray-700">Available for immediate start</span>
                     </div>
                   </div>
-                  
-                  <div>
-                    <Label htmlFor="subject" className="text-sm font-normal">Subject</Label>
-                    <Input
-                      id="subject"
-                      name="subject"
-                      value={formData.subject}
-                      onChange={handleInputChange}
-                      required
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="message" className="text-sm font-normal">Message</Label>
-                    <Textarea
-                      id="message"
-                      name="message"
-                      value={formData.message}
-                      onChange={handleInputChange}
-                      required
-                      rows={4}
-                      className="mt-1"
-                    />
-                  </div>
-                  
-                  <Button 
-                    type="submit" 
-                    disabled={isSubmitting}
-                    className="w-full bg-black hover:bg-gray-800 transition-colors duration-300"
-                  >
-                    {isSubmitting ? (
-                      "Sending..."
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4 mr-2" />
-                        Send Message
-                      </>
-                    )}
-                  </Button>
-                </form>
+                </div>
               </CardContent>
             </Card>
           </div>
